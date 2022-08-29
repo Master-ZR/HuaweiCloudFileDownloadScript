@@ -21,16 +21,39 @@
 
 (function () {
     'use strict';
-    let jsPdfScript = document.createElement('script');
-    jsPdfScript.setAttribute('type', 'text/javascript');
-    jsPdfScript.setAttribute('id', 'jsPDF');
-    jsPdfScript.src = "https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js";
-    document.documentElement.appendChild(jsPdfScript);
+
+
     console.log("MasterZR!");
+    _addJs()
     // 获取当前页面的分类：
     // videojs 视频
     // pdf 课件
     // problem 样题
+
+    /**
+     * 添加JS库
+     * 1.JSPDF
+     * 2.FORGEJS
+     */
+    async function _addJs() {
+        let forgeJs = document.createElement('script');
+        forgeJs.setAttribute('type', 'text/javascript');
+        forgeJs.setAttribute('id', 'forgeJs');
+        forgeJs.src = "https://unpkg.com/node-forge@1.0.0/dist/forge.min.js";
+        document.documentElement.appendChild(forgeJs);
+
+        let jsPdfScript = document.createElement('script');
+        jsPdfScript.setAttribute('type', 'text/javascript');
+        jsPdfScript.setAttribute('id', 'jsPDF');
+        jsPdfScript.src = "https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js";
+        document.documentElement.appendChild(jsPdfScript);
+    }
+    /**
+    * 获取当前页面的类型
+    * 1.videojs 视频
+    * 2.pdf 课件
+    * 3.problem 样题
+    */
     function _get_typeKey() {
         var typeKey = ''
         if (document.getElementsByClassName("pdfDocumentCon").length) {
@@ -43,6 +66,13 @@
         console.log(typeKey)
         return typeKey
     }
+    /**
+    * 生成文件名
+    * 章名+节名+后缀
+    * @description 1.videojs 视频 MP4
+    * @description 2.pdf 课件 PDF
+    * @description 3.problem 样题 TXT
+    */
     function _get_fileName() {
         // 生成文件名
         var Title = document.getElementsByClassName("active").tab_0.dataset.path.split(">");
@@ -53,15 +83,13 @@
         var fileName = ""
         switch (fileType) {
             case 'videojs':
-                fileName = subTitle[0].split('.') + "_" + mainTitle + "_" + subTitle[0] + subTitle[1] + "-" + subTitle2;
+                fileName = subTitle[0] + "_" + mainTitle + "_" + subTitle[0] + subTitle[1] + "-" + subTitle2;
                 return fileName + ".mp4"
             case 'pdf':
-                fileName = subTitle[0].split('.')[0] + "_" + mainTitle + "_" + subTitle[0] + subTitle[1] + "-" + subTitle2;
-
+                fileName = subTitle[0] + "_" + mainTitle + "_" + subTitle[0] + subTitle[1] + "-" + subTitle2;
                 return fileName + ".pdf"
             case 'problem':
-                fileName = subTitle[0].split('.')[0] + "_" + mainTitle + "_" + subTitle[0] + subTitle[1] + "-" + subTitle2;
-
+                fileName = subTitle[0] + "_" + mainTitle + "_" + subTitle[0] + subTitle[1] + "-" + subTitle2;
                 return fileName + ".txt"
             default:
                 break;
@@ -69,24 +97,32 @@
         // console.log(fileName)
     }
 
-    async function _get_video(isDown) {
-        console.log(isDown)
-        console.log("getVideo")
-        function removeWaterMarkes(list) {
-            for (const key in list) {
-                if (Object.hasOwnProperty.call(list, key)) {
-                    const element = list[key];
-                    if (element.attributeName == 'class' && element.target.children[0].classList[0] == 'watermark-elem') {
-                        console.log(element)
-                        for (let i = 0; i < document.getElementsByClassName("watermark-elem").length; i++) {
-                            document.getElementsByClassName("watermark-elem")[i].setAttribute("style", "display:none")
-                        }
+
+    /**
+    * observe回调函数
+    * @function 水印出现后移除
+    */
+    function _removeWaterMarkes(list) {
+        for (const key in list) {
+            if (Object.hasOwnProperty.call(list, key)) {
+                const element = list[key];
+                if (element.attributeName == 'class' && element.target.children[0].classList[0] == 'watermark-elem') {
+                    console.log(element)
+                    for (let i = 0; i < document.getElementsByClassName("watermark-elem").length; i++) {
+                        document.getElementsByClassName("watermark-elem")[i].setAttribute("style", "display:none")
                     }
                 }
             }
         }
+    }
 
-        var waterMarks = new MutationObserver(removeWaterMarkes)
+
+    /**
+    * observe 
+    * @function 添加监听器
+    */
+    function _OBS() {
+        var waterMarks = new MutationObserver(_removeWaterMarkes)
         var waterMarksNodes = $('.HU-video')[0]
         var options = {
             subtree: true,
@@ -96,92 +132,183 @@
             attributeOldValue: true
         };
         waterMarks.observe(waterMarksNodes, options)
+    }
+    async function _get_video(isDown) {
+        console.log(isDown)
+        console.log("getVideo")
         // 获取隐藏html标签
+        // 隐藏html标签中获取video_id
         var hiddenHtml = {}
         hiddenHtml.htmlStr = document.getElementById("seq_contents_0").outerHTML
         hiddenHtml.ral = hiddenHtml.htmlStr.replaceAll("&lt;", "<")
         hiddenHtml.html = hiddenHtml.ral.replaceAll("&gt;", ">")
         var hiddenHtmlNode = new DOMParser().parseFromString(hiddenHtml.html, 'text/html')
-        hiddenHtmlNode.body.childNodes[0].setAttribute("style", "display:none")
         document.body.appendChild(hiddenHtmlNode.body.childNodes[0])
         var videoIdJson = JSON.parse(document.getElementsByClassName("xblock xblock-student_view xblock-student_view-videojs")[1].children[0].innerHTML)
         // 生成主机链接
+        // 
         var targetObj = {}
         targetObj.hwHost = {}
         targetObj.hwHost.element = []
+        // 当前使用的协议(http/https)
         targetObj.hwHost.protocol = document.location.protocol
+        // 主机域名
         targetObj.hwHost.host = window.location.host
+        // 两个常用的path
         targetObj.hwHost.paths = ["vod/videos/", "play_video/"]
         // host vod/videos/video_id
         // 返回JSON格式m3u8列表
         // https://education.huaweicloud.com/vod/videos/b15991a3-b2ed-460b-a366-f4d9dd02f4e0/
         // host asset_id/play_video/video_id_清晰度_序列_后缀
         // https://13.cdn-vod.huaweicloud.com/asset/0ac34ca6dc9cbde9acda6d090c876ff7/play_video/84595d7ceed9c397068cfb0730749116_2_7.ts
-        targetObj.hwHost.m3u8Host = "https://13.cdn-vod.huaweicloud.com/asset/"
-        targetObj.hwHost.videoIdHost = targetObj.hwHost.protocol + "//" + targetObj.hwHost.host + "/"
-        var videoIdJsonRes = await fetch(targetObj.hwHost.videoIdHost + targetObj.hwHost.paths[0] + videoIdJson.video_id + "/").then(function (res) { return res.json() })
+        targetObj.hwHost.m3u8Host = `${targetObj.hwHost.protocol}//`
+        // 获取视频ID
+        targetObj.hwHost.videoIdHost = `${targetObj.hwHost.protocol}//${targetObj.hwHost.host}/${targetObj.hwHost.paths[0]}${videoIdJson.video_id}/`
+        var videoIdJsonRes = await fetch(targetObj.hwHost.videoIdHost).then(function (res) { return res.json() })
+        // 合并json
         targetObj.videoIdRes = Object.assign(videoIdJsonRes, videoIdJson);
         targetObj.elements = []
+        // 获取视频清晰度json
         targetObj.qualityJson = videoIdJsonRes.video_quality[videoIdJsonRes.video_quality.length - 1]
+        // 拆分m3u8url
         var temp = targetObj.qualityJson.video_url.split("//")
         targetObj.elements = temp.concat(temp[1].split("/"))
-        var part = targetObj.elements
-        targetObj.hwHost.m3u8Host = part[0] + "//" + part[2] + "/" + part[3] + "/" + part[4] + "/" + part[5] + "/"
+        // 获取ts主机链接
+        for (let index = 2; index < targetObj.elements.length - 1; index++) {
+            // console.log(targetObj.elements[index])
+            targetObj.hwHost.m3u8Host += targetObj.elements[index] + '/'
+        }
+        // 获取m3u8文件
         var tsList = await fetch(targetObj.qualityJson.video_url).then(function (res) { return res.text() })
         var fullTsList = []
+        // 从m3u8文件生成数组
         var tempList = tsList.split("\n")
+        // 删除最后一行的空行
         var m3u8TextList = tempList.slice(0, tempList.length - 1)
+        // tsUriList:完整TS文件链接
+        var tsUriList = []
+        var t = ''
+        var keyStr = ''
+        var m3u8Obj = {}
         for (let i = 0; i < m3u8TextList.length; i++) {
+            // 没有#就给爷爬
             if (!Boolean(m3u8TextList[i].indexOf("#") + 1)) {
                 // console.log(m3u8TextList[i])
-                var t = targetObj.hwHost.m3u8Host + m3u8TextList[i]
+                t = targetObj.hwHost.m3u8Host + m3u8TextList[i]
+                tsUriList.push(t)
                 fullTsList.push(t)
             }
             else {
                 t = m3u8TextList[i]
                 fullTsList.push(t)
+                if (t.search(/URI/) > 0) {
+                    m3u8Obj = await getM3u8KeyIv(t)
+                }
+
             }
             var tsText = fullTsList.join("\n")
         }
-        // tsUriList:完整TS文件链接
-        var tsUriList = []
-        for (const key in fullTsList) {
-            if (Object.hasOwnProperty.call(fullTsList, key)) {
-                const elements = fullTsList[key];
-                if (!Boolean(elements.indexOf("#") + 1)) {
-                    tsUriList.push(elements)
-                }
-            }
-        }
+
+        // for (const key in fullTsList) {
+        //     if (Object.hasOwnProperty.call(fullTsList, key)) {
+        //         const elements = fullTsList[key];
+        //         if (!Boolean(elements.indexOf("#") + 1)) {
+        //             tsUriList.push(elements)
+        //         }
+        //     }
+        // }
+        // 获取文件名
         var fileName = _get_fileName()
         // var isDownload = confirmAct("确定要下载吗")
-        var GMList = GM_listValues()
-
-        console.log(GMList)
+        // var GMList = GM_listValues()
+        // console.log(GMList)
         var isDownload = GM_getValue('isDownload', 'false')
         console.log(isDownload)
         if (isDownload || isDown) {
-            _downloadVideo(fileName, tsUriList)
+            _downloadVideo(fileName, tsUriList, m3u8Obj.key, m3u8Obj.iv)
         }
     }
 
-    // 获取TS文件的arraybuffer
-    // @param url(ts文件完整链接)
-    // 返回arraybuffer
-    async function getTs(url) {
-        return new Promise(function (resolve, reject) {
+    async function getM3u8KeyIv(m3u8Url) {
+        var t = m3u8Url
+        var m3u8Obj = {}
+        if (t.search(/URI/) > 0) {
+            m3u8Obj.keyUrl = t.substring(t.search(/URI/), t.search(/IV/)).split("\"")[1]
+            m3u8Obj.iv = t.substring(t.search(/0x/) + 2, t.length).split("\"")[0]
+            var key = await fetch(m3u8Obj.keyUrl).then(res => {
+                return res.arrayBuffer()
+            })
+            m3u8Obj.key = [...new Uint8Array(key)]
+                .map(x => x.toString(16).padStart(2, '0'))
+                .join('');
+            return m3u8Obj
+        }
+
+    }
+
+
+    function hexToBytes(hex) {
+        for (var bytes = [], c = 0; c < hex.length; c += 2)
+            bytes.push(parseInt(hex.substr(c, 2), 16));
+        return bytes;
+    }
+    /**
+     * AES解密数据
+     * @param encryptedData 加密后的数据
+     * @param bytesKey AESkey(bytes)
+     * @param bytesiv AESIV(bytes)
+     * @returns 解密的数据
+     */
+    function decryption(encryptedData, bytesKey, bytesIv) {
+        var decipher = forge.cipher.createDecipher('AES-CBC', bytesKey);
+        decipher.start({ iv: bytesIv });
+        decipher.update(forge.util.createBuffer(encryptedData));
+        var result = decipher.finish(); // check 'result' for true/false
+        // outputs decrypted hex
+        // console.log(decipher.output);
+        return decipher
+    }
+    /**
+    * 获取TS文件的arraybuffer
+    * @param url (ts文件完整链接)
+    * @returns arraybuffer ts文件的arraybuffer
+    */
+    function getTs(url, key = '', iv = '') {
+        return new Promise(async function (resolve, reject) {
+
             let data = {
                 method: "GET",
                 url: url,
                 responseType: 'arraybuffer'
             }
-            resolve(axios(data));
+            var dataObj = {}
+            dataObj.headers = {}
+            dataObj.data = []
+            var bufferData = []
+            var uint8ArrayData = []
+            var decryptedData = {}
+            if (key && iv) {
+                var bytesKey = forge.util.hexToBytes(key)
+                var bytesIv = forge.util.hexToBytes(iv)
+                data = await fetch(url)
+                console.log(data)
+                dataObj.headers["content-type"] = data.headers.get("Content-Type")
+                bufferData = await data.arrayBuffer()
+                uint8ArrayData = new Uint8Array(bufferData)
+                decryptedData = await decryption(uint8ArrayData, bytesKey, bytesIv)
+                var blobData = new Blob([new Uint8Array(hexToBytes(decryptedData.output.toHex()))], { type: "video/mp2t" })
+                dataObj.data = await blobData.arrayBuffer()
+                resolve(dataObj)
+            } else {
+                resolve(axios(data));
+            }
         })
     }
-
-    // 合并arraybuffer
-    // @param list(arraybuffer)
-    // 返回一个合并好的buffer
+    /**
+     * 合并arraybuffer
+     * @param list (arraybuffer)合集
+     * @returns arraybuffer ts文件合并后的arraybuffer
+     */
     function mergeArrayBuffer(arrays) {
         let totalLen = 0;
         for (let arr of arrays) {
@@ -442,7 +569,6 @@
                     console.log("Loading")
                 }
             }, 50);
-
         })
     }
 
@@ -460,11 +586,13 @@
     }
 
     function main() {
+        
         var fileType = _get_typeKey()
         console.log(fileType)
         switch (fileType) {
             case 'videojs':
                 _get_video()
+                _OBS()
                 break;
             case 'pdf':
                 _get_pdf()
@@ -619,7 +747,6 @@
         _spanStatus()
         //回调事件
         function callback(mutationsList, observer) {
-
             var btn1 = $('#autoDownload')[0]
             var btn2 = $('#downloadNum')[0]
             var btn3 = $('#btnDownload')[0]
@@ -679,8 +806,13 @@
         //回调事件
     }
 
-    // 下载资源
-    async function _downloadVideo(fileName, tsUriList) {
+    /**
+     * 下载视频
+     * @param fileName 文件名
+     * @param tsUriList ts完整URI
+     */
+
+    async function _downloadVideo(fileName, tsUriList, m3u8Key, m3u8Iv) {
         var buffers = {}
         // buffer.mime:文件类型
         buffers.mime = ""
@@ -689,15 +821,16 @@
         for (const key in tsUriList) {
             if (Object.hasOwnProperty.call(tsUriList, key)) {
                 const element = tsUriList[key];
-                var arrayBuffers = await getTs(element)
-                buffers.buffers = buffers.buffers.concat(arrayBuffers.data)
+                // 获取对应TS文件的arraybuffer
+                var arrayBuffers = await getTs(element, m3u8Key, m3u8Iv)
+                buffers.buffers.push(arrayBuffers.data)
+                console.log(buffers)
                 $downloadNum.innerHTML = `已捕获 ${buffers.buffers.length} 个文件`
                 buffers.mime = arrayBuffers.headers["content-type"]
             }
         }
         // buffers.ALLbuffers:所有TS合并之后的文件
         buffers.ALLbuffers = mergeArrayBuffer(buffers.buffers)
-
         var blobFile = new Blob([buffers.ALLbuffers], { type: buffers.mime });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blobFile)
