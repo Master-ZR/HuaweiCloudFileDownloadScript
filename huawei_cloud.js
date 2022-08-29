@@ -50,16 +50,17 @@
         var subTitle = Title[1].replace(/(^\s*)|(\s*$)/g, "").split(" ");
         var subTitle2 = Title[2].replace(/\s*/g, "").split(" ");
         var fileType = _get_typeKey()
+        var fileName = ""
         switch (fileType) {
             case 'videojs':
-                var fileName = subTitle[0].split('.') + "_" + mainTitle + "_" + subTitle[0] + subTitle[1] + "-" + subTitle2;
+                fileName = subTitle[0].split('.') + "_" + mainTitle + "_" + subTitle[0] + subTitle[1] + "-" + subTitle2;
                 return fileName + ".mp4"
             case 'pdf':
-                var fileName = subTitle[0].split('.')[0] + "_" + mainTitle + "_" + subTitle[0] + subTitle[1] + "-" + subTitle2;
+                fileName = subTitle[0].split('.')[0] + "_" + mainTitle + "_" + subTitle[0] + subTitle[1] + "-" + subTitle2;
 
                 return fileName + ".pdf"
             case 'problem':
-                var fileName = subTitle[0].split('.')[0] + "_" + mainTitle + "_" + subTitle[0] + subTitle[1] + "-" + subTitle2;
+                fileName = subTitle[0].split('.')[0] + "_" + mainTitle + "_" + subTitle[0] + subTitle[1] + "-" + subTitle2;
 
                 return fileName + ".txt"
             default:
@@ -392,7 +393,7 @@
             if (mutationsList.length < 100) {
                 isComplete = isSrc(mutationsList)
                 if (isComplete) {
-                    if (mutationsList[0].attributeName == 'src' ){
+                    if (mutationsList[0].attributeName == 'src') {
 
                         // get_pdfStart()
                         iframeMutationObserver.disconnect()
